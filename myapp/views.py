@@ -1,29 +1,29 @@
 from django.shortcuts import render
-from firebase import firebase
+from django.http import HttpRequest,HttpResponse
+
 import requests
+from .utils.utils import createPostslug,getPostIndexfromslug,getPostsListwithSlugindex
+from .utils.DBManager import DBManager
 
-config = {
-    "apiKey": "AIzaSyAjimJxm2UZHP7L5rHIpAdBIWlDr2_NFKs",
-    "authDomain": "news-in-briefs-db.firebaseapp.com",
-    "databaseURL": "https://news-in-briefs-db-default-rtdb.firebaseio.com",
-    "storageBucket": "news-in-briefs-db.appspot.com"
-}
 
-def index(request):
-    firebaseconn = firebase.FirebaseApplication(config["databaseURL"], None)
-
+def index(request:HttpRequest):
+    post_slug = request.GET.get("post","")
+    print(post_slug)
     # Fetch categories from Firebase
     try:
-        categories = firebaseconn.get('/NewsCategories', None)
-        print(categories[1:])  # Debugging output
+        categories = DBManager.getCategories()
+        #print(categories)  # Debugging output
     except requests.exceptions.HTTPError as e:
         print(f"HTTP Error: {e}")
         categories = {}
-
     # Fetch news posts from Firebase
     try:
-        news_posts = firebaseconn.get('/News', None)
-        print(news_posts)  # Debugging output
+        news_posts = DBManager.getNewsList()
+        #print(news_posts)  # Debugging output
+        i = getPostIndexfromslug(post_slug,news_posts)
+        news_data = getPostsListwithSlugindex(i,news_posts)
+        print(news_data)
+
     except requests.exceptions.HTTPError as e:
         print(f"HTTP Error: {e}")
         news_posts = {}
@@ -31,7 +31,7 @@ def index(request):
     # Prepare the context with the fetched categories and news posts
     context = {
         'categories': categories[1:],
-        'news_posts': news_posts
+        'news_posts': news_data
     }
 
     return render(request=request, template_name='index.html', context=context)
